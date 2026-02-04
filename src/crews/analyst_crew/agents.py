@@ -3,6 +3,9 @@
 Analyst Crew agents definition
 
 TODO: EDA Specialist יצור את האג'נטים האמיתיים כאן
+
+🚀 שינוי בולט - עדכון על ידי Auto AI Assistant
+📝 שינוי זה נוצר כדי לבדוק את תהליך ה-Git
 """
 
 from typing import List
