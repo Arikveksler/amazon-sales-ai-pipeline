@@ -1,0 +1,7 @@
+crewai
+crewai-tools
+pandas
+matplotlib
+seaborn
+plotly
+langchain-openai
