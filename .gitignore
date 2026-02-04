@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+
+# Data files (raw data should not be in git)
+data/raw/*.csv
+data/processed/*.csv
+
+# Model files
+outputs/models/*.pkl
+outputs/models/*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# Logs
+*.log
+logs/
+# Amazon Sales Pipeline - Project Specific
+data/raw/*.csv
+data/processed/*.csv
+outputs/models/*.pkl
+outputs/reports/*.html
+outputs/features/*.csv
+*.log
+.crewai/

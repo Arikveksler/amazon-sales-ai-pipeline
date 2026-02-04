@@ -1,0 +1,59 @@
+{
+  "pipeline_start": "2026-02-03T02:44:24.067352",
+  "pipeline_end": "2026-02-03T02:44:25.138732",
+  "status": "finalize_completed",
+  "stages": {
+    "load_raw_data": {
+      "status": "completed",
+      "running_at": "2026-02-03T02:44:24.067352",
+      "completed_at": "2026-02-03T02:44:24.171614",
+      "rows": 1465,
+      "columns": 16,
+      "file_path": "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\data\\raw\\amazon_sales.csv"
+    },
+    "analyst_crew": {
+      "status": "completed",
+      "running_at": "2026-02-03T02:44:24.173614",
+      "completed_at": "2026-02-03T02:44:24.302697",
+      "clean_data_path": "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\data\\processed\\clean_data.csv",
+      "contract_path": "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\data\\contracts\\dataset_contract.json",
+      "rows_cleaned": 1463,
+      "rows_removed": 2
+    },
+    "validate_analyst": {
+      "status": "completed",
+      "running_at": "2026-02-03T02:44:24.303696",
+      "completed_at": "2026-02-03T02:44:24.403994",
+      "clean_data_exists": true,
+      "contract_exists": true,
+      "clean_data_rows": 1463,
+      "contract_version": "1.0.0"
+    },
+    "scientist_crew": {
+      "status": "completed",
+      "running_at": "2026-02-03T02:44:24.406081",
+      "completed_at": "2026-02-03T02:44:25.133735",
+      "model_path": "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\outputs\\models\\model.pkl",
+      "report_path": "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\outputs\\reports\\evaluation_report.md",
+      "model_type": "placeholder"
+    },
+    "validate_scientist": {
+      "status": "completed",
+      "running_at": "2026-02-03T02:44:25.136733",
+      "completed_at": "2026-02-03T02:44:25.137732",
+      "model_exists": true,
+      "report_exists": true
+    },
+    "finalize": {
+      "status": "completed",
+      "completed_at": "2026-02-03T02:44:25.138732"
+    }
+  },
+  "created_files": [
+    "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\data\\processed\\clean_data.csv",
+    "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\data\\contracts\\dataset_contract.json",
+    "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\outputs\\models\\model.pkl",
+    "d:\\פרויקט גמר קורס\\amazon-sales-ai-pipeline\\outputs\\reports\\evaluation_report.md"
+  ],
+  "total_duration_seconds": 1.07138
+}

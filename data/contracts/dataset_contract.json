@@ -1,0 +1,48 @@
+{
+  "dataset_name": "amazon_sales_clean",
+  "version": "1.0.0",
+  "created_at": "2026-02-03T02:44:24.301698",
+  "schema": {
+    "columns": [
+      "product_id",
+      "product_name",
+      "category",
+      "discounted_price",
+      "actual_price",
+      "discount_percentage",
+      "rating",
+      "rating_count",
+      "about_product",
+      "user_id",
+      "user_name",
+      "review_id",
+      "review_title",
+      "review_content",
+      "img_link",
+      "product_link"
+    ],
+    "dtypes": {
+      "product_id": "object",
+      "product_name": "object",
+      "category": "object",
+      "discounted_price": "object",
+      "actual_price": "object",
+      "discount_percentage": "object",
+      "rating": "object",
+      "rating_count": "object",
+      "about_product": "object",
+      "user_id": "object",
+      "user_name": "object",
+      "review_id": "object",
+      "review_title": "object",
+      "review_content": "object",
+      "img_link": "object",
+      "product_link": "object"
+    },
+    "row_count": 1463
+  },
+  "quality_checks": {
+    "no_nulls": true,
+    "validated": true
+  }
+}
