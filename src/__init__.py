@@ -1,1 +1,1 @@
-# Amazon Sales AI Pipeline - Source Package
+# Source Package
