@@ -1,13 +1,56 @@
-# Python Virtual Environment
-venv/
-env/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
 
 # System files
 .DS_Store
 Thumbs.db
 nul
 
-# Environment Variables (Security)
-.env
+# Data files (raw data should not be in git)
+data/raw/*.csv
+data/processed/*.csv
+
+# Model files
+outputs/models/*.pkl
+outputs/models/*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# Logs
+*.log
+logs/
+
+# Amazon Sales Pipeline - Project Specific
+outputs/reports/*.html
+outputs/features/*.csv
+.crewai/
