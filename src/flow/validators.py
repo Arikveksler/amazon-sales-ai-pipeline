@@ -515,6 +515,95 @@ class DataValidator:
 
 
 # =============================================================================
+# בדיקת נתונים מול constraints
+# =============================================================================
+
+def validate_against_constraints(df: pd.DataFrame, contract: dict) -> Tuple[bool, str]:
+    """
+    בדיקת DataFrame מול אילוצי החוזה.
+    מוודא שכל הנתונים עומדים ב-constraints שהוגדרו.
+
+    Args:
+        df: הנתונים לבדיקה
+        contract: החוזה עם ה-constraints
+
+    Returns:
+        (True, הודעה) אם עובר
+        (False, רשימת שגיאות) אם נכשל
+
+    Example:
+        >>> df = pd.read_csv("clean_data.csv")
+        >>> contract = json.load(open("dataset_contract.json"))
+        >>> is_valid, msg = validate_against_constraints(df, contract)
+    """
+    logger.info("🔍 Validating data against contract constraints")
+
+    errors = []
+    constraints = contract.get('constraints', {})
+
+    if not constraints:
+        logger.warning("⚠ No constraints defined in contract")
+        return True, "No constraints to validate"
+
+    for column, rules in constraints.items():
+        # בדיקת קיום עמודה
+        if column not in df.columns:
+            if rules.get('required', False):
+                errors.append(f"עמודה חובה חסרה: {column}")
+            continue
+
+        col_data = df[column]
+
+        # בדיקת ערכים מספריים
+        if rules.get('type') == 'numeric':
+            try:
+                # ניסיון להמיר למספרים (מטפל בפורמט מחירים עם ₹)
+                numeric_data = pd.to_numeric(
+                    col_data.astype(str).str.replace('[₹,]', '', regex=True),
+                    errors='coerce'
+                )
+
+                # בדיקת מינימום
+                if 'min' in rules:
+                    below_min = numeric_data < rules['min']
+                    if below_min.any():
+                        count = below_min.sum()
+                        errors.append(f"{column}: {count} ערכים מתחת למינימום {rules['min']}")
+
+                # בדיקת מקסימום
+                if 'max' in rules:
+                    above_max = numeric_data > rules['max']
+                    if above_max.any():
+                        count = above_max.sum()
+                        errors.append(f"{column}: {count} ערכים מעל מקסימום {rules['max']}")
+
+            except Exception as e:
+                errors.append(f"{column}: שגיאה בהמרה למספר - {str(e)}")
+
+        # בדיקת ייחודיות
+        if rules.get('unique', False):
+            duplicates = col_data.duplicated().sum()
+            if duplicates > 0:
+                errors.append(f"{column}: {duplicates} ערכים כפולים (צריך להיות ייחודי)")
+
+        # בדיקת ערכים חסרים
+        if rules.get('required', False):
+            null_count = col_data.isnull().sum()
+            if null_count > 0:
+                errors.append(f"{column}: {null_count} ערכים חסרים (שדה חובה)")
+
+    # סיכום
+    if errors:
+        error_msg = "; ".join(errors)
+        logger.error(f"✗ Validation failed: {error_msg}")
+        return False, error_msg
+
+    validated_count = len(constraints)
+    logger.success(f"✓ All {validated_count} constraints validated successfully")
+    return True, f"Validated {validated_count} constraints successfully"
+
+
+# =============================================================================
 # פונקציית עזר להרצת כל הvalidations
 # =============================================================================
 

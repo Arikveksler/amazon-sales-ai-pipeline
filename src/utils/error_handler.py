@@ -472,6 +472,124 @@ class ErrorContext:
 
 
 # =============================================================================
+# הודעות שגיאה ידידותיות למשתמש
+# =============================================================================
+
+class UserFriendlyErrors:
+    """
+    מחלקה להודעות שגיאה ידידותיות בעברית.
+    מספקת הודעות ברורות למשתמש במקום הודעות טכניות.
+
+    Example:
+        >>> msg = UserFriendlyErrors.get('file_not_found', file='data.csv', path='data/raw/')
+        >>> print(msg)
+        "הקובץ 'data.csv' לא נמצא. אנא ודא שהקובץ קיים ב-data/raw/"
+    """
+
+    MESSAGES = {
+        # שגיאות קבצים
+        'file_not_found': "הקובץ '{file}' לא נמצא. אנא ודא שהקובץ קיים ב-{path}",
+        'file_empty': "הקובץ '{file}' ריק. אנא בדוק שהקובץ מכיל נתונים",
+        'file_corrupted': "הקובץ '{file}' פגום או לא בפורמט הנכון",
+
+        # שגיאות נתונים
+        'invalid_data': "הנתונים לא תקינים: {reason}",
+        'missing_columns': "עמודות חסרות בנתונים: {columns}",
+        'null_values': "נמצאו ערכים חסרים בעמודות: {columns}",
+        'invalid_values': "ערכים לא תקינים בעמודה '{column}': {details}",
+
+        # שגיאות חוזה
+        'contract_violation': "הנתונים לא עומדים בחוזה: {violations}",
+        'contract_missing': "קובץ חוזה הנתונים לא נמצא. אנא צור את הקובץ dataset_contract.json",
+        'contract_invalid': "חוזה הנתונים לא תקין: {reason}",
+
+        # שגיאות מודל
+        'model_not_found': "קובץ המודל לא נמצא. אנא וודא שהמודל אומן ונשמר",
+        'model_training_failed': "אימון המודל נכשל: {reason}",
+        'model_prediction_failed': "החיזוי נכשל: {reason}",
+
+        # שגיאות Pipeline
+        'validation_failed': "הולידציה נכשלה בשלב '{stage}': {details}",
+        'crew_failed': "צוות {crew} נכשל בביצוע המשימה: {reason}",
+        'pipeline_failed': "ה-Pipeline נכשל בשלב '{stage}'. בדוק את הלוגים לפרטים נוספים",
+
+        # שגיאות כלליות
+        'unknown_error': "אירעה שגיאה לא צפויה. אנא נסה שוב או פנה לתמיכה",
+        'permission_denied': "אין הרשאה לגשת לקובץ '{file}'",
+        'timeout': "הפעולה ארכה יותר מדי זמן ובוטלה"
+    }
+
+    @classmethod
+    def get(cls, error_type: str, **kwargs) -> str:
+        """
+        קבלת הודעת שגיאה מעוצבת.
+
+        Args:
+            error_type: סוג השגיאה (מפתח ב-MESSAGES)
+            **kwargs: ערכים להחלפה בתבנית
+
+        Returns:
+            str: הודעת שגיאה מעוצבת בעברית
+
+        Example:
+            >>> UserFriendlyErrors.get('file_not_found', file='data.csv', path='data/raw/')
+            "הקובץ 'data.csv' לא נמצא. אנא ודא שהקובץ קיים ב-data/raw/"
+
+            >>> UserFriendlyErrors.get('missing_columns', columns='price, rating')
+            "עמודות חסרות בנתונים: price, rating"
+        """
+        template = cls.MESSAGES.get(error_type, cls.MESSAGES['unknown_error'])
+        try:
+            return template.format(**kwargs)
+        except KeyError as e:
+            # אם חסר פרמטר, החזר את התבנית המקורית עם הערה
+            logger.warning(f"Missing parameter {e} for error message '{error_type}'")
+            return template
+
+    @classmethod
+    def get_all_types(cls) -> list:
+        """מחזיר רשימת כל סוגי השגיאות הזמינים."""
+        return list(cls.MESSAGES.keys())
+
+    @classmethod
+    def format_error(cls, error: Exception, error_type: str = None, **kwargs) -> str:
+        """
+        מעצב Exception לשגיאה ידידותית.
+
+        Args:
+            error: השגיאה המקורית
+            error_type: סוג השגיאה (אופציונלי, ינסה לזהות אוטומטית)
+            **kwargs: פרמטרים נוספים
+
+        Returns:
+            str: הודעת שגיאה ידידותית
+        """
+        # ניסיון לזהות אוטומטית את סוג השגיאה
+        if error_type is None:
+            if isinstance(error, FileNotFoundError):
+                error_type = 'file_not_found'
+                kwargs.setdefault('file', str(error))
+                kwargs.setdefault('path', '')
+            elif isinstance(error, PermissionError):
+                error_type = 'permission_denied'
+                kwargs.setdefault('file', str(error))
+            elif isinstance(error, TimeoutError):
+                error_type = 'timeout'
+            elif isinstance(error, DataValidationError):
+                error_type = 'validation_failed'
+                kwargs.setdefault('stage', getattr(error, 'step', 'unknown'))
+                kwargs.setdefault('details', str(error))
+            elif isinstance(error, CrewExecutionError):
+                error_type = 'crew_failed'
+                kwargs.setdefault('crew', getattr(error, 'crew_name', 'unknown'))
+                kwargs.setdefault('reason', str(error))
+            else:
+                error_type = 'unknown_error'
+
+        return cls.get(error_type, **kwargs)
+
+
+# =============================================================================
 # בדיקה עצמית
 # =============================================================================
 

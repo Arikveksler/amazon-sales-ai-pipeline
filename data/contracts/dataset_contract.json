@@ -2,6 +2,70 @@
   "dataset_name": "amazon_sales_clean",
   "version": "1.0.0",
   "created_at": "2026-02-03T02:44:24.301698",
+  "created_by": "Analyst Crew",
+  "description": "Amazon product sales data for price prediction",
+  "source": "Kaggle Amazon Sales Dataset",
+
+  "required_columns": [
+    "product_id",
+    "product_name",
+    "category",
+    "discounted_price",
+    "actual_price",
+    "rating"
+  ],
+
+  "constraints": {
+    "product_id": {
+      "type": "string",
+      "unique": true,
+      "required": true,
+      "description": "מזהה ייחודי למוצר"
+    },
+    "product_name": {
+      "type": "string",
+      "required": true,
+      "description": "שם המוצר"
+    },
+    "category": {
+      "type": "categorical",
+      "required": true,
+      "description": "קטגוריית המוצר"
+    },
+    "discounted_price": {
+      "type": "numeric",
+      "min": 0,
+      "required": true,
+      "description": "מחיר לאחר הנחה (Target Variable)"
+    },
+    "actual_price": {
+      "type": "numeric",
+      "min": 0,
+      "required": true,
+      "description": "מחיר מקורי"
+    },
+    "discount_percentage": {
+      "type": "numeric",
+      "min": 0,
+      "max": 100,
+      "required": false,
+      "description": "אחוז הנחה"
+    },
+    "rating": {
+      "type": "numeric",
+      "min": 0,
+      "max": 5,
+      "required": true,
+      "description": "דירוג ממוצע (1-5)"
+    },
+    "rating_count": {
+      "type": "numeric",
+      "min": 0,
+      "required": false,
+      "description": "מספר הדירוגים"
+    }
+  },
+
   "schema": {
     "columns": [
       "product_id",
@@ -41,8 +105,11 @@
     },
     "row_count": 1463
   },
+
   "quality_checks": {
     "no_nulls": true,
     "validated": true
-  }
+  },
+
+  "min_features": 5
 }
