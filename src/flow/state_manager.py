@@ -1,398 +1,333 @@
 """
-State Manager Module
-====================
-מחלקה לניהול מצב הריצה של ה-Pipeline, עם שמירה ל-JSON.
+Pipeline State Manager - src/flow/state_manager.py
 
-שומר:
-- איזה שלבים הושלמו
-- נתיבי קבצים שנוצרו (artifacts)
-- timestamps
-- שגיאות
-
-Author: Pipeline Lead
-Date: 2026
+ניהול מצב ריצת ה-Pipeline
 """
 
 import json
 import uuid
 from pathlib import Path
+from typing import Dict, Any, Optional
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+
 from loguru import logger
 
 
-class StateManager:
+class PipelineStateManager:
     """
-    מנהל מצב הריצה של Pipeline.
-    שומר ל-JSON את כל השלבים, קבצים, שגיאות.
+    מנהל מצב ריצת Pipeline
 
-    Example:
-        >>> sm = StateManager("outputs/pipeline_state.json")
-        >>> sm.update_stage("load_data", "completed", "Loaded 1465 rows")
-        >>> sm.add_artifact("clean_data", "data/processed/clean_data.csv")
-        >>> sm.save_state()
+    שומר state ב-JSON, כולל:
+    - איזה שלבים הושלמו
+    - timestamps של כל שלב
+    - נתיבי קבצים שנוצרו
+    - שגיאות שהיו
+    - metadata נוסף
+
+    Examples:
+        >>> manager = PipelineStateManager()
+        >>> manager.update_step("load_data", "completed", {"rows": 1465})
+        >>> last_step = manager.get_last_completed_step()
+        >>> print(last_step)
+        "load_data"
     """
 
-    def __init__(self, state_file: str = "outputs/pipeline_state.json"):
+    def __init__(self, state_file: str = "pipeline_state.json"):
         """
-        אתחול מנהל המצב.
+        אתחול State Manager
 
         Args:
-            state_file: נתיב לקובץ ה-state (ברירת מחדל: outputs/pipeline_state.json)
+            state_file: נתיב לקובץ JSON שישמור את ה-state
         """
-        self.logger = logger.bind(name="StateManager")
         self.state_file = Path(state_file)
+        self.state: Dict[str, Any] = self._initialize_state()
 
-        # אתחול state חדש
-        self.initialize_state()
+        # אם יש state קיים - טען אותו
+        if self.state_file.exists():
+            logger.info(f"טוען state קיים מ-{self.state_file}")
+            self.load_state()
+        else:
+            logger.info(f"יוצר state חדש")
+            self.save_state()
 
-        self.logger.info(f"StateManager initialized | pipeline_id: {self.state['pipeline_id']}")
-
-    def initialize_state(self) -> None:
+    def _initialize_state(self) -> Dict[str, Any]:
         """
-        יצירת state חדש עם ערכי התחלה.
-        נקרא אוטומטית באתחול.
+        יצירת state ריק התחלתי
+
+        Returns:
+            Dict עם המבנה הבסיסי של state
         """
-        self.state: Dict[str, Any] = {
-            "pipeline_id": self._generate_pipeline_id(),
-            "start_time": datetime.now().isoformat(),
-            "last_update": datetime.now().isoformat(),
-            "status": "running",
-            "stages": {},
-            "artifacts": {},
-            "errors": []
+        return {
+            "run_id": str(uuid.uuid4()),
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "status": "initialized",  # initialized, running, completed, failed
+            "steps": {},
+            "outputs": {},
+            "errors": [],
+            "metadata": {}
         }
-
-    def _generate_pipeline_id(self) -> str:
-        """
-        יצירת מזהה ייחודי ל-Pipeline.
-
-        Returns:
-            מזהה בפורמט: YYYYMMDD_HHMMSS_XXXX
-        """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        short_uuid = str(uuid.uuid4())[:4]
-        return f"{timestamp}_{short_uuid}"
-
-    def load_state(self) -> Dict[str, Any]:
-        """
-        טעינת state מקובץ JSON.
-        אם הקובץ לא קיים - מחזיר את ה-state הנוכחי.
-
-        Returns:
-            ה-state שנטען
-
-        Example:
-            >>> sm = StateManager()
-            >>> state = sm.load_state()
-            >>> print(state["status"])
-        """
-        if not self.state_file.exists():
-            self.logger.warning(f"State file not found: {self.state_file}")
-            return self.state
-
-        try:
-            with open(self.state_file, "r", encoding="utf-8") as f:
-                self.state = json.load(f)
-            self.logger.info(f"State loaded from: {self.state_file}")
-            return self.state
-
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse state JSON: {e}")
-            return self.state
-
-        except Exception as e:
-            self.logger.error(f"Failed to load state: {e}")
-            return self.state
 
     def save_state(self) -> None:
         """
-        שמירת state לקובץ JSON.
-        יוצר את התיקייה אוטומטית אם לא קיימת.
+        שמירת state לקובץ JSON
 
-        Example:
-            >>> sm = StateManager()
-            >>> sm.update_stage("step1", "completed")
-            >>> sm.save_state()
+        מעדכן אוטומטית את last_updated לזמן הנוכחי
+
+        Raises:
+            IOError: אם נכשלה השמירה
         """
         try:
-            # עדכון last_update
-            self.state["last_update"] = datetime.now().isoformat()
+            # עדכון timestamp
+            self.state["last_updated"] = datetime.now().isoformat()
 
             # יצירת תיקייה אם לא קיימת
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # שמירה
-            with open(self.state_file, "w", encoding="utf-8") as f:
+            # שמירה לקובץ עם indent יפה
+            with open(self.state_file, 'w', encoding='utf-8') as f:
                 json.dump(self.state, f, indent=2, ensure_ascii=False)
 
-            self.logger.debug(f"State saved to: {self.state_file}")
+            logger.debug(f"State נשמר ל-{self.state_file}")
 
         except Exception as e:
-            self.logger.error(f"Failed to save state: {e}")
+            error_msg = f"שגיאה בשמירת state: {str(e)}"
+            logger.error(error_msg)
+            raise IOError(error_msg)
 
-    def update_stage(self, stage_name: str, status: str, message: str = "") -> None:
+    def load_state(self) -> Dict[str, Any]:
         """
-        עדכון סטטוס של שלב.
+        טעינת state מקובץ JSON
+
+        Returns:
+            Dict עם ה-state שנטען
+
+        Raises:
+            FileNotFoundError: אם הקובץ לא קיים
+            json.JSONDecodeError: אם ה-JSON לא תקין
+        """
+        try:
+            with open(self.state_file, 'r', encoding='utf-8') as f:
+                self.state = json.load(f)
+
+            logger.debug(f"State נטען מ-{self.state_file}")
+            logger.info(f"Run ID: {self.state['run_id']}")
+            logger.info(f"סטטוס: {self.state['status']}")
+
+            return self.state
+
+        except FileNotFoundError:
+            error_msg = f"קובץ state לא נמצא: {self.state_file}"
+            logger.error(error_msg)
+            raise
+        except json.JSONDecodeError as e:
+            error_msg = f"JSON לא תקין בקובץ state: {str(e)}"
+            logger.error(error_msg)
+            raise
+        except Exception as e:
+            error_msg = f"שגיאה בטעינת state: {str(e)}"
+            logger.error(error_msg)
+            raise
+
+    def update_step(
+        self,
+        step_name: str,
+        status: str,
+        details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        עדכון סטטוס של שלב בודד
 
         Args:
-            stage_name: שם השלב
-            status: סטטוס (pending/in_progress/completed/failed/skipped)
-            message: הודעה נוספת (אופציונלי)
+            step_name: שם השלב (load_data, analyst_crew, scientist_crew, etc.)
+            status: סטטוס השלב (running, completed, failed)
+            details: מידע נוסף על השלב (אופציונלי)
 
-        Example:
-            >>> sm.update_stage("load_data", "completed", "Loaded 1465 rows")
-            >>> sm.update_stage("analyst_crew", "in_progress")
+        Examples:
+            >>> manager.update_step("load_data", "completed", {"rows": 1465})
+            >>> manager.update_step("analyst_crew", "running")
+            >>> manager.update_step("validation", "failed", {"error": "missing columns"})
         """
-        self.state["stages"][stage_name] = {
+        logger.info(f"מעדכן שלב: {step_name} -> {status}")
+
+        # יצירת entry לשלב
+        step_entry = {
             "status": status,
             "timestamp": datetime.now().isoformat(),
-            "message": message
-        }
-        self.logger.debug(f"Stage '{stage_name}' -> {status}")
-
-    def update_step(self, step_name: str, status: str, metadata: Optional[Dict] = None) -> None:
-        """
-        עדכון סטטוס שלב (alias ל-update_stage לתאימות).
-
-        Args:
-            step_name: שם השלב
-            status: סטטוס
-            metadata: מידע נוסף (אופציונלי)
-        """
-        message = str(metadata) if metadata else ""
-        self.update_stage(step_name, status, message)
-
-    def add_artifact(self, artifact_name: str, file_path: str) -> None:
-        """
-        הוספת artifact שנוצר.
-
-        Args:
-            artifact_name: שם ה-artifact
-            file_path: נתיב לקובץ
-
-        Example:
-            >>> sm.add_artifact("clean_data", "data/processed/clean_data.csv")
-            >>> sm.add_artifact("model", "outputs/models/model.pkl")
-        """
-        self.state["artifacts"][artifact_name] = {
-            "path": file_path,
-            "created_at": datetime.now().isoformat(),
-            "exists": Path(file_path).exists()
-        }
-        self.logger.debug(f"Artifact added: {artifact_name} -> {file_path}")
-
-    def add_error(self, stage: str, error_message: str) -> None:
-        """
-        רישום שגיאה.
-
-        Args:
-            stage: השלב בו קרתה השגיאה
-            error_message: הודעת השגיאה
-
-        Example:
-            >>> sm.add_error("analyst_crew", "Crew failed with timeout")
-        """
-        error_record = {
-            "stage": stage,
-            "message": error_message,
-            "timestamp": datetime.now().isoformat()
-        }
-        self.state["errors"].append(error_record)
-        self.logger.error(f"Error recorded in '{stage}': {error_message}")
-
-    def record_error(self, error_type: str, message: str, step: Optional[str] = None) -> None:
-        """
-        תיעוד שגיאה (alias ל-add_error לתאימות).
-
-        Args:
-            error_type: סוג השגיאה
-            message: הודעת השגיאה
-            step: שלב בו קרתה השגיאה
-        """
-        stage = step or "unknown"
-        full_message = f"{error_type}: {message}"
-        self.add_error(stage, full_message)
-
-    def get_stage_status(self, stage_name: str) -> Optional[str]:
-        """
-        קבלת סטטוס של שלב.
-
-        Args:
-            stage_name: שם השלב
-
-        Returns:
-            הסטטוס או None אם לא קיים
-
-        Example:
-            >>> status = sm.get_stage_status("load_data")
-            >>> print(status)  # "completed"
-        """
-        stage = self.state["stages"].get(stage_name)
-        return stage["status"] if stage else None
-
-    def get_step_status(self, step_name: str) -> Optional[str]:
-        """
-        קבלת סטטוס שלב (alias ל-get_stage_status).
-        """
-        return self.get_stage_status(step_name)
-
-    def is_stage_complete(self, stage_name: str) -> bool:
-        """
-        בדיקה אם שלב הושלם.
-
-        Args:
-            stage_name: שם השלב
-
-        Returns:
-            True אם השלב הושלם
-
-        Example:
-            >>> if sm.is_stage_complete("load_data"):
-            ...     print("Data loaded!")
-        """
-        return self.get_stage_status(stage_name) == "completed"
-
-    def is_step_completed(self, step_name: str) -> bool:
-        """
-        בדיקה אם שלב הושלם (alias ל-is_stage_complete).
-        """
-        return self.is_stage_complete(step_name)
-
-    def get_artifact_path(self, name: str) -> Optional[str]:
-        """
-        קבלת נתיב artifact.
-
-        Args:
-            name: שם ה-artifact
-
-        Returns:
-            נתיב לקובץ או None
-        """
-        artifact = self.state["artifacts"].get(name)
-        return artifact["path"] if artifact else None
-
-    def get_summary(self) -> Dict[str, Any]:
-        """
-        סיכום המצב.
-
-        Returns:
-            dict עם סיכום הריצה
-
-        Example:
-            >>> summary = sm.get_summary()
-            >>> print(summary["steps"])
-        """
-        # חישוב משך הריצה
-        start = datetime.fromisoformat(self.state["start_time"])
-        now = datetime.now()
-        duration = (now - start).total_seconds()
-
-        return {
-            "pipeline_id": self.state["pipeline_id"],
-            "status": self.state["status"],
-            "start_time": self.state["start_time"],
-            "last_update": self.state["last_update"],
-            "duration_seconds": duration,
-            "steps": {
-                name: stage["status"]
-                for name, stage in self.state["stages"].items()
-            },
-            "artifacts": list(self.state["artifacts"].keys()),
-            "errors": [e["message"] for e in self.state["errors"]]
+            "details": details or {}
         }
 
-    def complete(self, success: bool = True) -> None:
-        """
-        סימון הריצה כהושלמה.
+        # עדכון ב-state
+        self.state["steps"][step_name] = step_entry
 
-        Args:
-            success: האם הריצה הצליחה
+        # עדכון סטטוס כללי של ה-Pipeline
+        if status == "running":
+            self.state["status"] = "running"
+        elif status == "failed":
+            self.state["status"] = "failed"
 
-        Example:
-            >>> sm.complete(success=True)
-        """
-        self.state["status"] = "completed" if success else "failed"
-        self.state["end_time"] = datetime.now().isoformat()
+        # שמירה אוטומטית
         self.save_state()
-        self.logger.info(f"Pipeline completed with status: {self.state['status']}")
 
-    def reset(self) -> None:
+        logger.success(f"שלב {step_name} עודכן ל-{status}")
+
+    def get_last_completed_step(self) -> Optional[str]:
         """
-        איפוס המצב לריצה חדשה.
+        קבלת השלב האחרון שהושלם בהצלחה
 
-        Example:
-            >>> sm.reset()  # מתחיל ריצה חדשה
+        Returns:
+            שם השלב האחרון שהושלם, או None אם אין
+
+        Examples:
+            >>> last = manager.get_last_completed_step()
+            >>> if last:
+            >>>     print(f"Last completed: {last}")
         """
-        self.initialize_state()
-        self.logger.info("State reset for new run")
+        completed_steps = [
+            step_name
+            for step_name, step_data in self.state["steps"].items()
+            if step_data["status"] == "completed"
+        ]
+
+        if not completed_steps:
+            logger.debug("אין שלבים שהושלמו")
+            return None
+
+        # השלב האחרון הוא זה עם ה-timestamp האחרון
+        last_step = max(
+            completed_steps,
+            key=lambda s: self.state["steps"][s]["timestamp"]
+        )
+
+        logger.info(f"שלב אחרון שהושלם: {last_step}")
+        return last_step
+
+    def add_output(self, output_name: str, output_path: str) -> None:
+        """
+        הוספת תוצר (output) ל-state
+
+        Args:
+            output_name: שם התוצר (clean_data, model, report, etc.)
+            output_path: נתיב מלא לקובץ
+
+        Examples:
+            >>> manager.add_output("clean_data", "data/processed/clean_data.csv")
+            >>> manager.add_output("model", "outputs/models/model.pkl")
+        """
+        self.state["outputs"][output_name] = {
+            "path": output_path,
+            "created_at": datetime.now().isoformat()
+        }
+
+        self.save_state()
+        logger.info(f"תוצר נוסף: {output_name} -> {output_path}")
+
+    def add_error(self, error_message: str, step_name: Optional[str] = None) -> None:
+        """
+        הוספת שגיאה ל-state
+
+        Args:
+            error_message: תיאור השגיאה
+            step_name: שם השלב בו התרחשה השגיאה (אופציונלי)
+
+        Examples:
+            >>> manager.add_error("Validation failed: missing columns", "validation")
+        """
+        error_entry = {
+            "message": error_message,
+            "timestamp": datetime.now().isoformat(),
+            "step": step_name
+        }
+
+        self.state["errors"].append(error_entry)
+        self.save_state()
+
+        logger.error(f"שגיאה נוספה ל-state: {error_message}")
+
+    def mark_completed(self) -> None:
+        """
+        סימון ה-Pipeline כהושלם בהצלחה
+
+        מעדכן את הסטטוס ל-completed ושומר
+        """
+        self.state["status"] = "completed"
+        self.state["completed_at"] = datetime.now().isoformat()
+        self.save_state()
+
+        logger.success("Pipeline הושלם בהצלחה!")
+
+    def mark_failed(self, reason: str) -> None:
+        """
+        סימון ה-Pipeline כנכשל
+
+        Args:
+            reason: סיבת הכשל
+        """
+        self.state["status"] = "failed"
+        self.state["failed_at"] = datetime.now().isoformat()
+        self.state["failure_reason"] = reason
+        self.add_error(reason)
+        self.save_state()
+
+        logger.error(f"Pipeline נכשל: {reason}")
+
+    def reset_state(self) -> None:
+        """
+        איפוס מלא של ה-state
+
+        יוצר state חדש לגמרי (run_id חדש)
+        שימושי כשרוצים להתחיל מחדש לגמרי
+
+        Warning:
+            פעולה זו מוחקת את כל ההיסטוריה!
+        """
+        logger.warning("מאפס state לגמרי!")
+
+        self.state = self._initialize_state()
+        self.save_state()
+
+        logger.info("State אופס בהצלחה")
+
+    def get_state(self) -> Dict[str, Any]:
+        """
+        קבלת ה-state המלא
+
+        Returns:
+            Dict עם כל ה-state
+        """
+        return self.state.copy()
+
+    def get_summary(self) -> str:
+        """
+        קבלת סיכום טקסטואלי של ה-state
+
+        Returns:
+            str עם סיכום נחמד וקריא
+        """
+        summary_lines = [
+            "=" * 60,
+            "Pipeline State Summary",
+            "=" * 60,
+            f"Run ID: {self.state['run_id']}",
+            f"Created: {self.state['created_at']}",
+            f"Last Updated: {self.state['last_updated']}",
+            f"Status: {self.state['status']}",
+            "",
+            f"Completed Steps: {len([s for s in self.state['steps'].values() if s['status'] == 'completed'])}",
+            f"Running Steps: {len([s for s in self.state['steps'].values() if s['status'] == 'running'])}",
+            f"Failed Steps: {len([s for s in self.state['steps'].values() if s['status'] == 'failed'])}",
+            "",
+            f"Outputs: {len(self.state['outputs'])}",
+            f"Errors: {len(self.state['errors'])}",
+            "=" * 60
+        ]
+
+        return "\n".join(summary_lines)
+
+    def __repr__(self) -> str:
+        """String representation"""
+        return f"PipelineStateManager(run_id={self.state['run_id']}, status={self.state['status']})"
 
 
-# =============================================================================
 # Alias לתאימות אחורה
-# =============================================================================
-
-PipelineStateManager = StateManager
-
-
-# =============================================================================
-# בדיקה עצמית
-# =============================================================================
-
-if __name__ == "__main__":
-    import tempfile
-    import os
-
-    print("\n" + "=" * 60)
-    print("Testing State Manager Module")
-    print("=" * 60 + "\n")
-
-    # יצירת קובץ זמני לבדיקה
-    temp_dir = tempfile.mkdtemp()
-    state_file = os.path.join(temp_dir, "test_state.json")
-
-    # בדיקת אתחול
-    print("1. Testing initialization:")
-    sm = StateManager(state_file)
-    print(f"   Pipeline ID: {sm.state['pipeline_id']}")
-
-    # בדיקת עדכון שלבים
-    print("\n2. Testing stage updates:")
-    sm.update_stage("load_data", "completed", "Loaded 100 rows")
-    sm.update_stage("analyst_crew", "in_progress")
-    print(f"   load_data status: {sm.get_stage_status('load_data')}")
-    print(f"   analyst_crew status: {sm.get_stage_status('analyst_crew')}")
-
-    # בדיקת artifacts
-    print("\n3. Testing artifacts:")
-    sm.add_artifact("clean_data", "data/processed/clean_data.csv")
-    print(f"   Added artifact: clean_data")
-
-    # בדיקת שגיאות
-    print("\n4. Testing error recording:")
-    sm.add_error("test_stage", "This is a test error")
-    print(f"   Errors: {len(sm.state['errors'])}")
-
-    # בדיקת שמירה וטעינה
-    print("\n5. Testing save/load:")
-    sm.save_state()
-    print(f"   Saved to: {state_file}")
-
-    sm2 = StateManager(state_file)
-    sm2.load_state()
-    print(f"   Loaded pipeline_id: {sm2.state['pipeline_id']}")
-
-    # בדיקת סיכום
-    print("\n6. Testing summary:")
-    summary = sm.get_summary()
-    print(f"   Status: {summary['status']}")
-    print(f"   Steps: {summary['steps']}")
-    print(f"   Artifacts: {summary['artifacts']}")
-
-    # ניקוי
-    os.remove(state_file)
-    os.rmdir(temp_dir)
-
-    print("\n" + "=" * 60)
-    print("State Manager test complete")
-    print("=" * 60 + "\n")
+StateManager = PipelineStateManager
