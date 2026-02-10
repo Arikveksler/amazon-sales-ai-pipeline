@@ -1,115 +1,61 @@
 # Amazon Sales AI Pipeline
 
-CrewAI Flow לניתוח וחיזוי מכירות אמזון | CrewAI Flow for Amazon Sales Analysis & Prediction
+CrewAI-based pipeline for analyzing Amazon India sales data.
+Analyst Crew cleans the raw data, Scientist Crew builds an ML model and generates evaluation reports.
 
-## תיאור הפרויקט | Project Description
-
-פרויקט זה משלב שתי Crews של CrewAI לניתוח נתוני מכירות אמזון:
-1. **Analyst Crew** - ניקוי נתונים, EDA, ויצירת תובנות
-2. **Scientist Crew** - Feature Engineering, אימון מודל, והערכה
-
-## ארכיטקטורה | Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Raw Data      │────▶│  Analyst Crew   │────▶│ Clean Data +    │
-│ amazon_sales.csv│     │                 │     │ Contract        │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                                                         │
-                        ┌────────────────────────────────▼────────┐
-                        │              Validation                  │
-                        └────────────────────────────────┬────────┘
-                                                         │
-┌─────────────────┐     ┌─────────────────┐     ┌───────▼─────────┐
-│   Model +       │◀────│ Scientist Crew  │◀────│ Clean Data +    │
-│   Reports       │     │                 │     │ Contract        │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-```
-
-## התקנה | Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd amazon-sales-ai-pipeline
-
-# Create virtual environment
-python -m venv .venv
-
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Mac/Linux)
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-## הגדרת סביבה | Environment Setup
-
-צור קובץ `.env` בשורש הפרויקט:
-
-```env
-OPENAI_API_KEY=your_api_key_here
-LOG_LEVEL=INFO
-```
-
-## הרצה | Running
-
-```bash
-# Run the main pipeline
-python src/flow/main_flow.py
-```
-
-## מבנה התיקיות | Project Structure
+## Project Structure
 
 ```
 amazon-sales-ai-pipeline/
-├── data/                    # נתונים
-│   ├── raw/                # נתונים גולמיים
-│   ├── processed/          # נתונים מעובדים
-│   └── contracts/          # חוזי נתונים
-├── src/                    # קוד מקור
-│   ├── config/            # הגדרות
-│   ├── crews/             # Crews
-│   │   ├── analyst_crew/  # Data Analyst Crew
-│   │   └── scientist_crew/ # Data Scientist Crew
-│   ├── flow/              # Flow הראשי
-│   └── utils/             # כלי עזר
-├── outputs/               # תוצרים
-│   ├── reports/          # דוחות
-│   ├── models/           # מודלים
-│   └── features/         # Features
-├── tests/                # בדיקות
-└── docs/                 # תיעוד
+├── src/
+│   ├── crews/
+│   │   ├── analyst_crew/    # Data cleaning agent, tools & tasks
+│   │   └── scientist_crew/  # ML modeling agent (TBD)
+│   ├── flow/
+│   │   ├── main_flow.py     # Pipeline orchestrator
+│   │   ├── validators.py    # Validation between steps
+│   │   └── state_manager.py # JSON-based run state
+│   └── utils/
+│       └── error_handler.py # Custom exceptions, retry, logging
+├── data/
+│   ├── raw/                 # Raw CSV files
+│   ├── processed/           # Cleaned data
+│   └── contracts/           # Dataset contract JSON
+├── outputs/
+│   ├── models/              # Trained model (.pkl)
+│   └── reports/             # Evaluation & model card
+├── logs/                    # Pipeline logs
+└── tests/
 ```
 
-## תוצרים | Outputs
-
-- `clean_data.csv` - נתונים נקיים
-- `eda_report.html` - דוח EDA
-- `insights.md` - תובנות
-- `dataset_contract.json` - חוזה נתונים
-- `features.csv` - Features
-- `model.pkl` - מודל מאומן
-- `evaluation_report.md` - דוח הערכה
-- `model_card.md` - כרטיס מודל
-
-## הרצת בדיקות | Running Tests
+## Installation
 
 ```bash
-pytest tests/ -v
+git clone https://github.com/Arikveksler/amazon-sales-ai-pipeline.git
+cd amazon-sales-ai-pipeline
+pip install -r requirements.txt
 ```
 
-## הצוות | Team
+## Configuration
 
-- **Pipeline Lead**: [שם]
-- **EDA Specialist**: [שם]
-- **ML Specialist**: [שם]
-- **UI Developer**: [שם]
-- **Business & Docs**: [שם]
+Create a `.env` file in the project root:
 
-## רישיון | License
+```
+OPENAI_API_KEY=your-api-key-here
+```
 
-MIT
+## Usage
+
+```bash
+python src/flow/main_flow.py
+```
+
+## Status
+
+Pipeline infrastructure ready, waiting for Analyst/Scientist crews.
+
+## Team
+
+- **Pipeline Lead:** Arik Veksler
+- **Analyst Crew:** TBD
+- **Scientist Crew:** TBD
