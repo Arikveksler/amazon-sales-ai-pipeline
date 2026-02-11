@@ -50,9 +50,27 @@ OPENAI_API_KEY=your-api-key-here
 python src/flow/main_flow.py
 ```
 
+## Week 2: Feature Engineering
+
+Transforms the raw Amazon dataset into a numerical `features.csv` file (12 columns, 1465 rows) ready for ML model training.
+
+**Run the script:**
+```bash
+python src/tools/feature_engineering.py
+```
+
+**Run the tests:**
+```bash
+python -m unittest tests.test_feature_engineering -v
+```
+
+**Output:** `data/features/features.csv`
+
+For a full description of every feature column (what it represents, how it's calculated, and its data type), see [docs/FEATURE_REGISTRY.md](docs/FEATURE_REGISTRY.md).
+
 ## Status
 
-Pipeline infrastructure ready, waiting for Analyst/Scientist crews.
+Pipeline infrastructure ready. Analyst Crew (Week 1) and Feature Engineering (Week 2) complete.
 
 ## Team
 
