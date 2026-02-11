@@ -1,0 +1,116 @@
+"""
+Amazon Sales AI Pipeline - Streamlit Dashboard
+Week 3: UI Developer Implementation
+"""
+
+import streamlit as st
+import streamlit.components.v1 as components
+import pandas as pd
+from pathlib import Path
+
+# Project root (src/ -> parent)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Output file paths
+INSIGHTS_PATH = PROJECT_ROOT / "insights.md"
+EDA_REPORT_PATH = PROJECT_ROOT / "data" / "eda_report.html"
+
+
+def load_text_file(path: Path) -> str | None:
+    """Read a text file if it exists, return None otherwise."""
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return None
+
+
+# ── Page Config ──────────────────────────────────────────────────────────────
+
+st.set_page_config(
+    page_title="Amazon Sales AI Pipeline",
+    page_icon="📊",
+    layout="wide",
+)
+
+# ── Sidebar ──────────────────────────────────────────────────────────────────
+
+st.sidebar.title("Amazon Sales AI Pipeline")
+st.sidebar.markdown("CrewAI-powered analysis of Amazon India product data.")
+st.sidebar.markdown("---")
+
+uploaded_file = st.sidebar.file_uploader("Upload Amazon Sales CSV", type=["csv"])
+
+st.sidebar.markdown("---")
+st.sidebar.caption("Output files")
+st.sidebar.text(f"Insights:  {'Found' if INSIGHTS_PATH.exists() else 'Not found'}")
+st.sidebar.text(f"EDA Report: {'Found' if EDA_REPORT_PATH.exists() else 'Not found'}")
+
+# ── Main Title ───────────────────────────────────────────────────────────────
+
+st.title("Amazon Sales AI Pipeline")
+
+# ── Tabs ─────────────────────────────────────────────────────────────────────
+
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Data Preview",
+    "Insights",
+    "Visualizations",
+    "Prediction",
+])
+
+# ── Tab 1: Data Preview ─────────────────────────────────────────────────────
+
+with tab1:
+    st.header("Data Preview")
+
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file)
+        st.success(f"Loaded **{len(df)}** rows and **{len(df.columns)}** columns.")
+        st.dataframe(df.head(), use_container_width=True)
+
+        with st.expander("Column Info"):
+            col_info = pd.DataFrame({
+                "Type": df.dtypes.astype(str),
+                "Non-Null": df.notna().sum(),
+                "Null": df.isna().sum(),
+            })
+            st.dataframe(col_info, use_container_width=True)
+    else:
+        st.info("Upload a CSV file using the sidebar to preview the data.")
+
+# ── Tab 2: Insights ─────────────────────────────────────────────────────────
+
+with tab2:
+    st.header("Business Insights")
+
+    content = load_text_file(INSIGHTS_PATH)
+    if content:
+        st.markdown(content)
+    else:
+        st.warning(
+            f"File not found: `{INSIGHTS_PATH.relative_to(PROJECT_ROOT)}`\n\n"
+            "Run the Analyst Crew first:\n```bash\npython main.py\n```"
+        )
+
+# ── Tab 3: Visualizations ───────────────────────────────────────────────────
+
+with tab3:
+    st.header("EDA Report")
+
+    content = load_text_file(EDA_REPORT_PATH)
+    if content:
+        components.html(content, height=800, scrolling=True)
+    else:
+        st.warning(
+            f"File not found: `{EDA_REPORT_PATH.relative_to(PROJECT_ROOT)}`\n\n"
+            "Run the Analyst Crew first:\n```bash\npython main.py\n```"
+        )
+
+# ── Tab 4: Prediction ───────────────────────────────────────────────────────
+
+with tab4:
+    st.header("Prediction")
+    st.info("Model Training in Progress...")
+    st.markdown(
+        "This tab will display model predictions once the "
+        "Scientist Crew completes training."
+    )
