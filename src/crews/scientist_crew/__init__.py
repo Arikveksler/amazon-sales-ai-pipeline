@@ -1,11 +1,20 @@
 # Scientist Crew Package
 from .agents import create_scientist_agents
 from .tasks import create_scientist_tasks
+from .tools import (
+    engineer_features,
+    prepare_model_data,
+    train_models,
+)
 
-from crewai import Crew, Process
+# מימוש: נווה (מדען נתונים - ML)
+
+import os
+import pandas as pd
+import joblib
 from pathlib import Path
 from loguru import logger
-import os
+from sklearn.model_selection import train_test_split
 
 
 def run_scientist_crew(
@@ -16,200 +25,84 @@ def run_scientist_crew(
     reports_dir: str,
 ) -> dict:
     """
-    הרצת Data Scientist Crew.
-    Run Data Scientist Crew for ML model training pipeline.
+    הרצת Data Scientist Crew
 
-    Crew זה אחראי על:
-    - Feature Engineering: Create ML-ready features
-    - Model Training: Train Random Forest, XGBoost, Linear Regression with GridSearchCV
-    - Model Evaluation: Evaluate and compare models, select best
-    - Model Documentation: Create Model Card with responsible AI standards
+    תחום אחריות (נווה - מדען נתונים):
+    - Feature Engineering (הנדסת תכונות)
+    - אימון 2 מודלים (LinearRegression + RandomForestRegressor)
+    - שמירת המודל הטוב ביותר
+
+    תוצרים: features.csv, model.pkl
 
     Args:
-        clean_data_path: Path to clean_data.csv (from Analyst Crew)
-        contract_path: Path to dataset_contract.json (from Analyst Crew)
-        features_dir: Directory to save engineered features
-        models_dir: Directory to save trained model
-        reports_dir: Directory to save evaluation reports
+        clean_data_path: נתיב לנתונים הנקיים
+        contract_path: נתיב לחוזה הנתונים
+        features_dir: תיקייה לשמירת features
+        models_dir: תיקייה לשמירת מודלים
+        reports_dir: תיקייה לשמירת דוחות
 
     Returns:
-        Dictionary with output paths and metrics:
-        {
-            'features_path': str,
-            'model_path': str,
-            'evaluation_report_path': str,
-            'model_card_path': str,
-            'metrics': dict  # Best model test metrics
-        }
-
-    Raises:
-        FileNotFoundError: If input files don't exist
-        ValueError: If crew execution fails
+        מילון עם נתיבי התוצרים שנוצרו
     """
-    logger.info("="*60)
-    logger.info("Starting Scientist Crew")
-    logger.info("="*60)
+    logger.info("=" * 60)
+    logger.info("Scientist Crew - Feature Engineering + Model Training")
+    logger.info("=" * 60)
 
-    # ========================================================================
-    # Step 1: Validate Inputs
-    # ========================================================================
-
-    logger.info("Step 1: Validating inputs...")
-
-    # Check input files exist
+    # --- ולידציה ---
     if not os.path.exists(clean_data_path):
         raise FileNotFoundError(f"Clean data file not found: {clean_data_path}")
-
     if not os.path.exists(contract_path):
         raise FileNotFoundError(f"Contract file not found: {contract_path}")
 
-    logger.info(f"  ✓ Clean data: {clean_data_path}")
-    logger.info(f"  ✓ Contract: {contract_path}")
+    # --- יצירת תיקיות ---
+    for dir_path in [features_dir, models_dir]:
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
 
-    # ========================================================================
-    # Step 2: Create Output Directories
-    # ========================================================================
+    # --- שלב 1: טעינת נתונים נקיים ---
+    logger.info("שלב 1: טוען נתונים נקיים...")
+    clean_data = pd.read_csv(clean_data_path)
+    logger.info(f"  נטענו {len(clean_data)} שורות, {len(clean_data.columns)} עמודות")
 
-    logger.info("Step 2: Creating output directories...")
+    # --- שלב 2: הנדסת תכונות ---
+    logger.info("שלב 2: הנדסת תכונות...")
+    features_df = engineer_features(clean_data)
 
-    Path(features_dir).mkdir(parents=True, exist_ok=True)
-    Path(models_dir).mkdir(parents=True, exist_ok=True)
-    Path(reports_dir).mkdir(parents=True, exist_ok=True)
+    features_path = os.path.join(features_dir, "features.csv")
+    features_df.to_csv(features_path, index=False)
+    logger.info(f"  נשמר: {features_path}")
 
-    logger.info(f"  ✓ Features dir: {features_dir}")
-    logger.info(f"  ✓ Models dir: {models_dir}")
-    logger.info(f"  ✓ Reports dir: {reports_dir}")
+    # --- שלב 3: אימון מודלים ---
+    logger.info("שלב 3: אימון מודלים...")
+    X, y = prepare_model_data(features_df)
 
-    # ========================================================================
-    # Step 3: Create Agents
-    # ========================================================================
-
-    logger.info("Step 3: Creating agents...")
-
-    agents = create_scientist_agents()
-
-    logger.info(f"  ✓ Created {len(agents)} agents:")
-    for agent in agents:
-        logger.info(f"    - {agent.role}")
-
-    # ========================================================================
-    # Step 4: Create Tasks
-    # ========================================================================
-
-    logger.info("Step 4: Creating tasks...")
-
-    tasks = create_scientist_tasks(
-        agents=agents,
-        clean_data_path=clean_data_path,
-        contract_path=contract_path,
-        features_dir=features_dir,
-        models_dir=models_dir,
-        reports_dir=reports_dir
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
     )
+    logger.info(f"  Train: {len(X_train)}, Test: {len(X_test)}")
 
-    logger.info(f"  ✓ Created {len(tasks)} tasks:")
-    for i, task in enumerate(tasks, 1):
-        logger.info(f"    {i}. {task.agent.role}")
+    results = train_models(X_train, y_train, X_test, y_test)
 
-    # ========================================================================
-    # Step 5: Create and Run Crew
-    # ========================================================================
+    # --- שלב 4: שמירת המודל הטוב ביותר ---
+    logger.info("שלב 4: שמירת המודל הטוב ביותר...")
+    model_path = os.path.join(models_dir, "model.pkl")
+    joblib.dump(results["best_model"], model_path)
+    logger.info(f"  נשמר: {model_path} ({results['best_model_name']})")
 
-    logger.info("Step 5: Creating and running crew...")
-
-    scientist_crew = Crew(
-        agents=agents,
-        tasks=tasks,
-        process=Process.sequential,  # Tasks run in order
-        verbose=2,  # Maximum verbosity
-        memory=False  # No shared memory needed
-    )
-
-    logger.info("  ✓ Crew created (sequential process)")
-    logger.info("  Starting crew execution...")
-    logger.info("  (This may take several minutes due to model training)")
-    logger.info("-"*60)
-
-    try:
-        result = scientist_crew.kickoff()
-
-        logger.info("-"*60)
-        logger.success("✓ Crew execution completed!")
-
-    except Exception as e:
-        logger.error(f"✗ Crew execution failed: {e}")
-        raise ValueError(f"Scientist Crew execution failed: {e}")
-
-    # ========================================================================
-    # Step 6: Validate Outputs
-    # ========================================================================
-
-    logger.info("Step 6: Validating outputs...")
-
-    # Define expected output paths
-    features_path = os.path.join(features_dir, 'features.csv')
-    model_path = os.path.join(models_dir, 'model.pkl')
-    eval_report_path = os.path.join(reports_dir, 'evaluation_report.md')
-    model_card_path = os.path.join(reports_dir, 'model_card.md')
-
-    # Check all outputs exist
-    missing_outputs = []
-
-    if not os.path.exists(features_path):
-        missing_outputs.append('features.csv')
-    else:
-        logger.info(f"  ✓ Features: {features_path}")
-
-    if not os.path.exists(model_path):
-        missing_outputs.append('model.pkl')
-    else:
-        logger.info(f"  ✓ Model: {model_path}")
-
-    if not os.path.exists(eval_report_path):
-        missing_outputs.append('evaluation_report.md')
-    else:
-        logger.info(f"  ✓ Evaluation report: {eval_report_path}")
-
-    if not os.path.exists(model_card_path):
-        missing_outputs.append('model_card.md')
-    else:
-        logger.info(f"  ✓ Model card: {model_card_path}")
-
-    if missing_outputs:
-        raise ValueError(f"Missing outputs: {missing_outputs}")
-
-    # ========================================================================
-    # Step 7: Extract Metrics
-    # ========================================================================
-
-    logger.info("Step 7: Extracting metrics from model...")
-
-    try:
-        import joblib
-        model_data = joblib.load(model_path)
-        metadata = model_data.get('metadata', {})
-        test_metrics = metadata.get('test_metrics', {})
-
-        logger.info(f"  ✓ Best model: {metadata.get('model_type', 'Unknown')}")
-        logger.info(f"  ✓ Test R²: {test_metrics.get('r2', 0.0):.4f}")
-        logger.info(f"  ✓ Test MAE: {test_metrics.get('mae', 0.0):.2f}")
-
-    except Exception as e:
-        logger.warning(f"  ⚠ Could not extract metrics: {e}")
-        test_metrics = {}
-
-    # ========================================================================
-    # Step 8: Return Results
-    # ========================================================================
-
-    logger.info("="*60)
-    logger.success("Scientist Crew Completed Successfully!")
-    logger.info("="*60)
+    # --- סיכום ---
+    logger.info("=" * 60)
+    logger.success("Scientist Crew - סיים בהצלחה!")
+    logger.info(f"  מודל: {results['best_model_name']}")
+    logger.info(f"  MAE: {results[results['best_model_name']]['mae']:.2f}")
+    logger.info(f"  R2: {results[results['best_model_name']]['r2']:.4f}")
+    logger.info("=" * 60)
 
     return {
-        'features_path': features_path,
-        'model_path': model_path,
-        'evaluation_report_path': eval_report_path,
-        'model_card_path': model_card_path,
-        'metrics': test_metrics
+        "features_path": features_path,
+        "model_path": model_path,
+        "model_type": results["best_model_name"],
+        "metrics": {
+            name: {"mae": r["mae"], "rmse": r["rmse"], "r2": r["r2"]}
+            for name, r in results.items()
+            if isinstance(r, dict) and "mae" in r
+        },
     }
