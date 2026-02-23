@@ -15,6 +15,8 @@ import pandas as pd
 from loguru import logger
 from dotenv import load_dotenv
 
+from src.flow.validators import DataValidator
+
 # טעינת משתני סביבה
 load_dotenv()
 
@@ -166,12 +168,13 @@ class AmazonSalesPipeline:
 
     def validate_analyst_outputs(self) -> bool:
         """
-        בדיקת תוצרי Analyst Crew
+        בדיקת תוצרי Analyst Crew באמצעות DataValidator
 
         בדיקות:
         1. clean_data.csv קיים ונטען תקין
         2. dataset_contract.json קיים ותקין (JSON valid)
         3. כל העמודות הנדרשות קיימות
+        4. אילוצי הנתונים (constraints) מתקיימים
 
         Returns:
             True אם כל הבדיקות עברו, False אחרת
@@ -180,57 +183,28 @@ class AmazonSalesPipeline:
         logger.info("מבצע Validation על תוצרי Analyst Crew")
         logger.info("=" * 80)
 
+        validator = DataValidator()
         validation_passed = True
 
-        # בדיקה 1: clean_data.csv קיים
-        if not self.clean_data_path.exists():
-            logger.error(f"קובץ נתונים נקיים לא נמצא: {self.clean_data_path}")
+        # בדיקה 1: dataset_contract.json קיים ותקין
+        is_valid, msg = validator.validate_dataset_contract(str(self.contract_path))
+        if not is_valid:
+            logger.error(f"Contract validation failed: {msg}")
             validation_passed = False
         else:
-            logger.success(f"clean_data.csv קיים")
+            logger.success(f"dataset_contract.json תקין: {msg}")
 
-            # בדיקה שהקובץ נטען תקין
-            try:
-                df = pd.read_csv(self.clean_data_path)
-                logger.info(f"{len(df)} שורות, {len(df.columns)} עמודות")
-
-                # בדיקה שאין ערכים חסרים (לפי המפרט)
-                missing = df.isnull().sum().sum()
-                if missing > 0:
-                    logger.warning(f"נמצאו {missing} ערכים חסרים בנתונים הנקיים")
-
-            except Exception as e:
-                logger.error(f"שגיאה בטעינת clean_data.csv: {e}")
+        # בדיקה 2: clean_data.csv קיים ותואם ל-contract
+        if validation_passed:
+            is_valid, msg = validator.validate_clean_data(
+                str(self.clean_data_path),
+                str(self.contract_path)
+            )
+            if not is_valid:
+                logger.error(f"Clean data validation failed: {msg}")
                 validation_passed = False
-
-        # בדיקה 2: dataset_contract.json קיים ותקין
-        if not self.contract_path.exists():
-            logger.error(f"קובץ contract לא נמצא: {self.contract_path}")
-            validation_passed = False
-        else:
-            logger.success(f"dataset_contract.json קיים")
-
-            # בדיקה שה-JSON תקין
-            try:
-                import json
-                with open(self.contract_path, 'r') as f:
-                    contract = json.load(f)
-
-                # בדיקה שיש את השדות הנדרשים
-                required_fields = ["schema", "required_columns", "constraints"]
-                for field in required_fields:
-                    if field not in contract:
-                        logger.error(f"חסר שדה חובה ב-contract: {field}")
-                        validation_passed = False
-                    else:
-                        logger.success(f"שדה {field} קיים ב-contract")
-
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON לא תקין: {e}")
-                validation_passed = False
-            except Exception as e:
-                logger.error(f"שגיאה בקריאת contract: {e}")
-                validation_passed = False
+            else:
+                logger.success(f"clean_data.csv תקין: {msg}")
 
         if validation_passed:
             logger.success("=" * 80)
@@ -295,12 +269,12 @@ class AmazonSalesPipeline:
 
     def validate_scientist_outputs(self) -> bool:
         """
-        בדיקת תוצרי Scientist Crew
+        בדיקת תוצרי Scientist Crew באמצעות DataValidator
 
         בדיקות:
         1. model.pkl קיים
-        2. evaluation_report.md קיים
-        3. model_card.md קיים ומלא
+        2. evaluation_report.md קיים ולא ריק
+        3. model_card.md קיים ומכיל את כל הסקשנים הנדרשים
 
         Returns:
             True אם כל הבדיקות עברו
@@ -309,39 +283,26 @@ class AmazonSalesPipeline:
         logger.info("מבצע Validation על תוצרי Scientist Crew")
         logger.info("=" * 80)
 
-        validation_passed = True
+        validator = DataValidator()
 
-        # בדיקה 1: model.pkl
-        if not self.model_path.exists():
-            logger.error(f"קובץ מודל לא נמצא: {self.model_path}")
-            validation_passed = False
-        else:
-            logger.success(f"model.pkl קיים")
+        # בדיקה מקיפה של כל תוצרי המודל
+        is_valid, msg = validator.validate_model_outputs(
+            str(self.model_path),
+            str(self.eval_report_path),
+            str(self.model_card_path)
+        )
 
-        # בדיקה 2: evaluation_report.md
-        if not self.eval_report_path.exists():
-            logger.error(f"דוח הערכה לא נמצא: {self.eval_report_path}")
-            validation_passed = False
-        else:
-            logger.success(f"evaluation_report.md קיים")
-
-        # בדיקה 3: model_card.md
-        if not self.model_card_path.exists():
-            logger.error(f"model card לא נמצא: {self.model_card_path}")
-            validation_passed = False
-        else:
-            logger.success(f"model_card.md קיים")
-
-        if validation_passed:
+        if is_valid:
             logger.success("=" * 80)
             logger.success("כל בדיקות ה-Validation עברו בהצלחה!")
+            logger.success(f"Details: {msg}")
             logger.success("=" * 80)
         else:
             logger.error("=" * 80)
-            logger.error("Validation נכשל!")
+            logger.error(f"Validation נכשל: {msg}")
             logger.error("=" * 80)
 
-        return validation_passed
+        return is_valid
 
     def run(self) -> Dict[str, Any]:
         """

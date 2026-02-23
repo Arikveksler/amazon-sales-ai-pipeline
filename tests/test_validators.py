@@ -148,8 +148,13 @@ class TestDataValidator:
     def test_validate_features(self, validator, temp_dir):
         """בדיקה: קובץ features"""
         features_path = temp_dir / "features.csv"
+        # Create at least 10 rows (minimum required by validator)
         df = pd.DataFrame(
-            {"feature1": [1, 2, 3], "feature2": [4, 5, 6], "target": [0, 1, 0]}
+            {
+                "feature1": list(range(10)),
+                "feature2": list(range(10, 20)),
+                "target": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+            }
         )
         df.to_csv(features_path, index=False)
 
