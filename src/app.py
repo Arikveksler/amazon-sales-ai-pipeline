@@ -3,6 +3,8 @@ Amazon Sales AI Pipeline - Streamlit Dashboard
 Week 3: UI Developer Implementation
 """
 
+import time
+
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -50,6 +52,15 @@ st.sidebar.markdown("CrewAI-powered analysis of Amazon India product data.")
 st.sidebar.markdown("---")
 
 uploaded_file = st.sidebar.file_uploader("Upload Amazon Sales CSV", type=["csv"])
+
+st.sidebar.markdown("---")
+
+# TODO ARIK: Trigger actual CrewAI flow here
+run_pipeline = st.sidebar.button("Run Analysis Pipeline")
+if run_pipeline:
+    with st.spinner("Running Analyst Crew..."):
+        time.sleep(2)
+    st.sidebar.success("Pipeline execution complete!")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Output files")
@@ -104,14 +115,19 @@ with tab1:
 with tab2:
     st.header("Business Insights")
 
-    content = load_text_file(INSIGHTS_PATH)
+    # Check root first, then data/ as a fallback
+    _insights_candidates = [
+        INSIGHTS_PATH,
+        PROJECT_ROOT / "data" / "insights.md",
+    ]
+    content = next(
+        (load_text_file(p) for p in _insights_candidates if p.exists()),
+        None,
+    )
     if content:
         st.markdown(content)
     else:
-        st.warning(
-            f"File not found: `{INSIGHTS_PATH.relative_to(PROJECT_ROOT)}`\n\n"
-            "Run the Analyst Crew first:\n```bash\npython main.py\n```"
-        )
+        st.info("No insights generated yet. Run the pipeline first.")
 
 # ── Tab 3: Visualizations ───────────────────────────────────────────────────
 
