@@ -15,6 +15,18 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INSIGHTS_PATH = PROJECT_ROOT / "insights.md"
 EDA_REPORT_PATH = PROJECT_ROOT / "data" / "eda_report.html"
 
+# Columns the pipeline (EDA + feature engineering) requires in the uploaded CSV
+REQUIRED_COLUMNS = [
+    "product_id",
+    "product_name",
+    "category",
+    "discounted_price",
+    "actual_price",
+    "discount_percentage",
+    "rating",
+    "rating_count",
+]
+
 
 def load_text_file(path: Path) -> str | None:
     """Read a text file if it exists, return None otherwise."""
@@ -64,6 +76,16 @@ with tab1:
 
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
+
+        missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+        if missing_cols:
+            st.error(
+                "**Invalid CSV — missing required columns:**\n\n"
+                + "\n".join(f"- `{c}`" for c in missing_cols)
+                + "\n\nPlease upload the Amazon Sales CSV with the correct schema."
+            )
+            st.stop()
+
         st.success(f"Loaded **{len(df)}** rows and **{len(df.columns)}** columns.")
         st.dataframe(df.head(), use_container_width=True)
 
