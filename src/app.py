@@ -109,8 +109,29 @@ with tab3:
 
 with tab4:
     st.header("Prediction")
-    st.info("Model Training in Progress...")
-    st.markdown(
-        "This tab will display model predictions once the "
-        "Scientist Crew completes training."
-    )
+    st.markdown("Enter product details below to get a predicted rating.")
+
+    with st.form("prediction_form"):
+        price = st.number_input("Discounted Price (₹)", min_value=0.0, value=499.0, step=50.0)
+        category = st.selectbox("Category", [
+            "Electronics", "Computers&Accessories", "Home&Kitchen",
+            "Health&PersonalCare", "Toys&Games", "Other",
+        ])
+        review_count = st.number_input("Number of Reviews", min_value=0, value=500, step=100)
+        discount_pct = st.number_input("Discount (%)", min_value=0.0, max_value=100.0, value=40.0, step=5.0)
+
+        submitted = st.form_submit_button("Predict Rating")
+
+    if submitted:
+        # ================================================================
+        # TODO NAVEH: Load model.pkl here and replace this mock result
+        # with model.predict(input_data).
+        #
+        # Example integration:
+        #   import joblib, numpy as np
+        #   model = joblib.load("outputs/models/model.pkl")
+        #   input_data = np.array([[price, discount_pct, review_count, ...]])
+        #   prediction = model.predict(input_data)[0]
+        # ================================================================
+        st.success("Mock Prediction: Expected Rating is 4.6 ⭐")
+        st.info("This is a placeholder result. Connect model.pkl to get real predictions.")
