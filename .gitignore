@@ -9,11 +9,17 @@ __pycache__/
 # Virtual Environment
 .venv/
 venv/
+env/
 ENV/
 
 # Environment Variables
 .env
 .env.local
+
+# System files
+.DS_Store
+Thumbs.db
+nul
 
 # Data files (raw data should not be in git)
 data/raw/*.csv
@@ -29,10 +35,6 @@ outputs/models/*.joblib
 *.swp
 *.swo
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Jupyter
 .ipynb_checkpoints/
 
@@ -47,11 +49,8 @@ htmlcov/
 # Logs
 *.log
 logs/
+
 # Amazon Sales Pipeline - Project Specific
-data/raw/*.csv
-data/processed/*.csv
-outputs/models/*.pkl
 outputs/reports/*.html
 outputs/features/*.csv
-*.log
 .crewai/

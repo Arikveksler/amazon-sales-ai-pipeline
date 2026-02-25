@@ -1,7 +1,10 @@
 {
-  "dataset_name": "amazon_sales_clean",
-  "version": "1.0.0",
+  "dataset_name": "amazon_sales",
+  "version": "2.0.0",
   "created_at": "2026-02-03T02:44:24.301698",
+  "updated_at": "2026-02-23T00:00:00",
+  "description": "Amazon India product sales data with pricing, ratings, and reviews",
+
   "schema": {
     "columns": [
       "product_id",
@@ -25,11 +28,11 @@
       "product_id": "object",
       "product_name": "object",
       "category": "object",
-      "discounted_price": "object",
-      "actual_price": "object",
-      "discount_percentage": "object",
-      "rating": "object",
-      "rating_count": "object",
+      "discounted_price": "float64",
+      "actual_price": "float64",
+      "discount_percentage": "float64",
+      "rating": "float64",
+      "rating_count": "float64",
       "about_product": "object",
       "user_id": "object",
       "user_name": "object",
@@ -39,10 +42,85 @@
       "img_link": "object",
       "product_link": "object"
     },
-    "row_count": 1463
+    "row_count_min": 1400,
+    "row_count_max": 2000
   },
+
+  "required_columns": [
+    "product_id",
+    "discounted_price",
+    "actual_price",
+    "rating",
+    "rating_count",
+    "category"
+  ],
+
+  "constraints": {
+    "discounted_price": {
+      "type": "numeric",
+      "min": 0.01,
+      "max": null,
+      "nullable": false,
+      "description": "Sale price must be positive"
+    },
+    "actual_price": {
+      "type": "numeric",
+      "min": 0.01,
+      "max": null,
+      "nullable": false,
+      "description": "Original price must be positive"
+    },
+    "rating": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 5.0,
+      "nullable": false,
+      "description": "Star rating between 0 and 5"
+    },
+    "rating_count": {
+      "type": "numeric",
+      "min": 0,
+      "max": null,
+      "nullable": false,
+      "description": "Number of ratings, non-negative"
+    },
+    "discount_percentage": {
+      "type": "numeric",
+      "min": 0,
+      "max": 100,
+      "nullable": false,
+      "description": "Discount percentage between 0 and 100"
+    }
+  },
+
+  "allowed_values": {
+    "main_categories": [
+      "Car&Motorbike",
+      "Computers&Accessories",
+      "Electronics",
+      "Health&PersonalCare",
+      "Home&Kitchen",
+      "HomeImprovement",
+      "MusicalInstruments",
+      "OfficeProducts",
+      "Toys&Games"
+    ]
+  },
+
+  "assumptions": {
+    "data_source": "Amazon India product listings",
+    "currency": "INR (Indian Rupees)",
+    "price_format": "Raw prices contain currency symbol (₹) and commas",
+    "rating_scale": "0-5 stars with decimal precision",
+    "category_delimiter": "Pipe character (|) separates category hierarchy",
+    "missing_values": "Rows with nulls in required columns should be removed",
+    "duplicates": "Product IDs may appear multiple times (multiple reviews per product)"
+  },
+
   "quality_checks": {
-    "no_nulls": true,
-    "validated": true
+    "no_nulls_in_required": true,
+    "valid_price_relationship": "discounted_price <= actual_price",
+    "valid_rating_range": "0 <= rating <= 5",
+    "positive_prices": true
   }
 }
