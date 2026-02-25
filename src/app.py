@@ -3,12 +3,17 @@ Amazon Sales AI Pipeline - Streamlit Dashboard
 Week 3: UI Developer Implementation
 """
 
-import time
+import os
 
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 from pathlib import Path
+from dotenv import load_dotenv
+
+from src.crews.analyst_crew import AnalystCrew
+
+load_dotenv()
 
 # Project root (src/ -> parent)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -55,12 +60,17 @@ uploaded_file = st.sidebar.file_uploader("Upload Amazon Sales CSV", type=["csv"]
 
 st.sidebar.markdown("---")
 
-# TODO ARIK: Trigger actual CrewAI flow here
 run_pipeline = st.sidebar.button("Run Analysis Pipeline")
 if run_pipeline:
-    with st.spinner("Running Analyst Crew..."):
-        time.sleep(2)
-    st.sidebar.success("Pipeline execution complete!")
+    if not os.environ.get("OPENAI_API_KEY"):
+        st.sidebar.error("OPENAI_API_KEY not found in .env!")
+    else:
+        try:
+            with st.spinner("Running Analyst Crew..."):
+                AnalystCrew().run()
+            st.sidebar.success("Pipeline execution complete!")
+        except Exception as e:
+            st.sidebar.error(f"Pipeline failed: {e}")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Output files")
